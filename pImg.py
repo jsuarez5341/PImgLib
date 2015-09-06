@@ -14,6 +14,8 @@ def usage():
    -f or --file: Specify file path
    -p or --params: Specify function parameters
       If specifying multiple parameters, you MUST surround them with quotes
+   -d of --debug: Show internal command parsing
+   --jpg: Save as a .jpg
    -h or --help: Display this help
 
    For information about specific library functions:
@@ -32,16 +34,18 @@ if __name__=="__main__":
      
    img=None
    fPath=''
+   debug=False
+   useJpg=False
 
    #Custom flag and argument parsing
    cmds=[]
    flags=[]
-   for i in range(len(argv)-1):
+   for i in range(len(argv)):
       if argv[i] in ('-c', '--command', '--cmd'):
          #Search through arguments for params until hit a flag.
          cmds+=[[argv[i]]]
          for p in argv[i+1:]:
-            if p in ('-h', '--help', '-c', '--command', '-f', '--file'):
+            if p in ('-h', '--help', '-c', '--command', '-f', '--file', '-d', '--debug', '--jpg'):
                break;
             cmds[-1]+=[p] 
             i+=1
@@ -54,8 +58,13 @@ if __name__=="__main__":
             print("File not found: "+fPath+". Is the path properly specified?")
             sys.exit(2)
          flags+=[['-f',img]] 
+      elif argv[i] == '--jpg':
+         useJpg=True
       elif argv[i] in ('-h', '--help'):
          exitGracefully()   
+      elif argv[i] in ('-d', '--debug'):
+         debug=True
+      
    #Use the cmd and flag lists built above to assemble a command string
    cmdStr=''
    firstIter=1
@@ -84,11 +93,13 @@ if __name__=="__main__":
    
    #This is IN NO WAY SAFE. It should not matter, as
    #this is a personal use program not running as root
-   #try:
-   print(cmdStr)
-   retImg = eval(cmdStr)
-   '''except:
-      print("Tried to evaluate: "+callStr)
+   if debug:
+      print("Debug: command parsed as:")
+      print(cmdStr)
+   try:
+      retImg = eval(cmdStr)
+   except:
+      print("Tried to evaluate: "+cmdStr)
       print("""
       Does this look correct? If the call is not
       as you desired, check your flags/args.
@@ -96,10 +107,13 @@ if __name__=="__main__":
       or specify -h if you are confused.
       """)
       #sys.exit(2)
-   '''
+   
    try: 
+      ext='.png'
+      if(useJpg):
+         ext='.jpg'
       if not(retImg is None):
-         misc.imsave("outputImg.png", retImg);
+         misc.imsave("outputImg"+ext, retImg);
    except:
       print("""
       An error occured while trying to save the image.
