@@ -1,0 +1,1 @@
+python pImg.py  -c rgbNoise 1920 1080 -c brightness -80 -c rgbScale 0.5 1.2 2.0 -c rgbShift -10 20 30

@@ -1,4 +1,5 @@
 import inspect
+import sys
 import pdb
 import numpy as np
 
@@ -50,25 +51,22 @@ def usage():
       Applies the classic sepia filter to an image.
    invert:
       Inverts the colors of an image via 255-img.
-   rgbTransform: r g b
+   rgbScale: r g b
       Scales the rgb components of an image, using
       "r", "g", and "b" as multipliers.
-   fade: direction color mMin mMax aMin aMax addFirst
+   rgbShift: r g b
+      Adds the color offsets "r", "g", and "b" to the
+      image. Values should be less than 255. 
+   fade: direction color min max add
       Applies a linear gradient to the image starting
       from "direction" using "color". All other parameters
-      are optional. "mMin" and 'mMax" specify the bounds
-      of the multiplicative filter, "aMin" and "aMax"
-      specify the bounds of the additive filter, and 
-      addFirst is a boolean (True/False or 1/0) that
+      are optional. "min" and 'max" specify the bounds
+      of the filter. "add" is a boolean (True/False) that
       specifies whether to apply the additive filter
-      first and then the multiplicative filter or
-      to use the opposite ordering (default).
+      (True, default) or the multiplicative filter (False)
 
       Valid directions: left l right r top t bottom b
-      Valid colors: red green blue cyan magenta yellow
-         black white grey gray OR define a custom rgb
-         color with [r,g,b] with each entry between 
-         0 and 255 inclusive.
+      Valid colors: see "Colors" section below.
 
    ---Generators---
    black: width height
@@ -85,6 +83,21 @@ def usage():
    rgbNoise: width height
       Random rgb noise
     
+   ---Colors---
+       standards
+   red   green   blue
+   cyan  magenta yellow
+   black white   gray
+  
+         extras 
+   arch
+
+   Specify custom rgb with:
+   [r,g,b]
+
+   Note: all standard colors
+   may be specified by their
+   first letter (use k for black)
    """ 
    print(helpMsg)
 
@@ -92,6 +105,35 @@ def nArgs(funName):
    #No problems with eval, given that this is a
    #personal use program not running as root
    return len(inspect.getargspec(eval(funName))[0])
+
+def getColor(color):
+   if not(type(color)==str):
+      #Assume it is a list
+      return color
+   elif color in ('red', 'r'):
+      rgb=[255,0,0]
+   elif color in ('green', 'g'):
+      rgb=[0,255,0]
+   elif color in ('blue', 'b'):
+      rgb=[0,0,255]
+   elif color in ('cyan', 'c'):
+      rgb=[0,255,255]
+   elif color in ('magenta', 'm'):
+      rgb=[255,0,255]
+   elif color in ('yellow', 'y'):
+      rgb=[255,255,0]
+   elif color in ('black', 'k'):
+      rgb=[0,0,0]
+   elif color in ('white', 'w'):
+      rgb=[255,255,255]
+   elif color in ('gray', 'grey', 'g'):
+      rgb=[128,128,128]
+   elif color=='arch':
+      rgb=[23,147,209]
+   else:
+      print("Error: Specify a valid color")
+      sys.exit(2)
+   return rgb
 
 def size(img):
    s=img.shape
@@ -171,7 +213,7 @@ def sepia(img):
 def invert(img):
    return 255-img
 
-def rgbTransform(img, r, g, b):
+def rgbScale(img, r, g, b):
    if r<0 or g<0 or b<0:
       print('Error: parameters "r", "g", and "b" must be non-negative')
       sys.exit(2)
@@ -183,51 +225,53 @@ def rgbTransform(img, r, g, b):
    params=np.asarray([r,g,b]);
    params=params[np.newaxis,np.newaxis,:]
    img=img*params
-   img[img>(255/(params+eps))]=255
+   img[img>(255)]=255
    return img
 
-def fade(img, direction, color, mMin=0, mMax=1, aMin=0, aMax=0, addFirst=False):
+def rgbShift(img, r, g, b):
+   if r>255 or g>255 or b>255:
+      print('Error: parameters "r", "g", and "b" must be at most 255')
+      sys.exit(2)
+   rgb=np.asarray([r,g,b])
+   rgb=rgb[np.newaxis, np.newaxis, :]
+   aboveTop=img>(255-rgb)
+   belowTop=img<=-rgb
+   img+=aboveTop*belowTop*rgb
+   img[aboveTop]=255
+   img[belowTop]=0
+   return img
+
+def fade(img, direction, color, fMin=0, fMax=256, add=True):
    s=img.shape
-   if color=='red':
-      rgb=[255,0,0]
-   elif color=='green':
-      rgb=[0,255,0]
-   elif color=='blue':
-      rgb=[0,0,255]
-   elif color=='cyan':
-      rgb=[0,255,255]
-   elif color=='magenta':
-      rgb=[255,0,255]
-   elif color=='yellow':
-      rgb=[255,255,0]
-   elif color=='black' or color=='white':
+   if color in ('black', 'k', 'white', 'w'):
       print("""
       Warning: common stumbling block.
       Black and white use the same color value,
       but black is controlled by the multiplicative
-      factor whereas white is controlled by the
+      filter whereas white is controlled by the
       additive factor.""")
-      rgb=[255,255,255]
-   elif color=='grey' or color=='gray':
-      rgb=[128,128,128]
-   else:
-      #User input an RGB array
-      rgb=color
+      color='white'
+
+   #User input an RGB array
+   rgb=getColor(color)
    rgb=np.asarray(rgb)/255.0
 
+   #Multiplicative and additive filters
+   #operate in opposite directions. Fix it.
+   if not add:
+      temp=fMin
+      fMin=fMax
+      fMax=temp
+
    #Compute fade lines
-   if direction in ('left', 'l'):
-      aLine=np.linspace(aMin, aMax, s[1])
-      mLine=np.linspace(mMin, mMax, s[1])
-   elif direction in ('right', 'r'):
-      aLine=np.linspace(aMax, aMin, s[1])
-      mLine=np.linspace(mMax, mMin, s[1])
-   elif direction in ('top', 't'):
-      aLine=np.linspace(aMin, aMax, s[0])
-      mLine=np.linspace(mMin, mMax, s[0])
+   if direction in ('right', 'r'):
+      fLine=np.linspace(fMin, fMax, s[1])
+   elif direction in ('left', 'l'):
+      fLine=np.linspace(fMax, fMin, s[1])
    elif direction in ('bottom', 'b'):
-      aLine=np.linspace(aMax, aMin, s[0])
-      mLine=np.linspace(mMax, mMin, s[0])
+      fLine=np.linspace(fMin, fMax, s[0])
+   elif direction in ('top', 't'):
+      fLine=np.linspace(fMax, fMin, s[0])
    else:
       print("""
       Error: acceptable directions are:
@@ -239,23 +283,18 @@ def fade(img, direction, color, mMin=0, mMax=1, aMin=0, aMax=0, addFirst=False):
       sys.exit(2);
 
    #Store rgb scaled fLine filters in fMat
-   aMat=np.asarray(rgb[:, np.newaxis]*aLine)
-   mMat=np.asarray(rgb[:, np.newaxis]*mLine)
+   fMat=np.asarray(rgb[:, np.newaxis]*fLine)
    #Apply filters across image layers
    if direction in ('left', 'l', 'right', 'r'):
-      if addFirst:
-         img=aMat.T[np.newaxis,:,:]+img
-         img=mMat.T[np.newaxis,:,:]*img
+      if add:
+         img=fMat.T[np.newaxis,:,:]+img
       else:
-         img=mMat.T[np.newaxis,:,:]*img
-         img=aMat.T[np.newaxis,:,:]+img
+         img=fMat.T[np.newaxis,:,:]*img
    else:
-      if addFirst:
-         img=aMat.T[:,np.newaxis,:]+img
-         img=mMat.T[:,np.newaxis,:]*img
+      if add:
+         img=fMat.T[:,np.newaxis,:]+img
       else:
-         img=mMat.T[:,np.newaxis,:]*img
-         img=aMat.T[:,np.newaxis,:]+img
+         img=fMat.T[:,np.newaxis,:]*img
  
    img[img>255]=255
    img[img<0]=0
@@ -274,7 +313,9 @@ def white(w, h):
 def gray(w, h):
    return np.zeros((h,w), dtype=np.uint8)+128
 
-def solid(w, h, r, g, b):
+def solid(w, h, color):
+   rgb=getColor(color)
+   r,g,b = rgb
    img=np.zeros((h,w,3), dtype=np.uint8)
    img[:,:,0]=r
    img[:,:,1]=g
@@ -286,8 +327,5 @@ def grayNoise(w, h):
 
 def rgbNoise(w, h):
    return (np.random.rand(h,w,3)*256).astype(np.uint8)
-
-
-
 
 

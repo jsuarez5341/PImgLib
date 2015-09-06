@@ -41,7 +41,7 @@ if __name__=="__main__":
          #Search through arguments for params until hit a flag.
          cmds+=[[argv[i]]]
          for p in argv[i+1:]:
-            if p[0]=='-':
+            if p in ('-h', '--help', '-c', '--command', '-f', '--file'):
                break;
             cmds[-1]+=[p] 
             i+=1
@@ -71,6 +71,12 @@ if __name__=="__main__":
          cmdStr+=oldCmd + ', '
       firstIter=0
       for p in c[1:]:
+         #Handle string quotes
+         if not(p[0]=='[' or p=='True' or p=='False'):
+            try:
+               float(p)
+            except:
+               p='"'+p+'"'
          cmdStr+=p+', ' 
       if len(c[1:])>0 or needImg:
          cmdStr=cmdStr[:-2] #strip comma
