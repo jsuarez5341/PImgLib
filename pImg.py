@@ -9,17 +9,19 @@ def usage():
    #Half of this info belongs here
    #The other half is in the lib file
    helpMsg="""
-   Usage: pImg libraryCall -flag arg
+   Usage: pImg -flag arg (example: pImg -f imgPath -c rgbShift 20 20 50
+   Note: you can chain multiple commands with multiple -c
    Flags:
    -f or --file: Specify file path
    -p or --params: Specify function parameters
       If specifying multiple parameters, you MUST surround them with quotes
-   -d of --debug: Show internal command parsing
    --jpg: Save as a .jpg
+   -o or --output: Set save file name. Leave off the file extension.
+   -d of --debug: Show internal command parsing
    -h or --help: Display this help
 
    For information about specific library functions:
-   pImg usage
+   pImg -c usage
    """
    print(helpMsg)
 
@@ -32,38 +34,33 @@ if __name__=="__main__":
    if len(argv)<2 or not argv[0][0]=='-':
       exitGracefully() 
      
-   img=None
-   fPath=''
-   debug=False
-   useJpg=False
-
    #Custom flag and argument parsing
    cmds=[]
-   flags=[]
+   flags={}
    for i in range(len(argv)):
       if argv[i] in ('-c', '--command', '--cmd'):
          #Search through arguments for params until hit a flag.
          cmds+=[[argv[i]]]
          for p in argv[i+1:]:
-            if p in ('-h', '--help', '-c', '--command', '-f', '--file', '-d', '--debug', '--jpg'):
+            if p in ('-h', '--help', '-c', '--command', '-f', '--file', '-d', '--debug', '--jpg', '-o', '--output'):
                break;
             cmds[-1]+=[p] 
             i+=1
       elif argv[i] in ('-f', '--file'):
-         fPath=argv[i+1]
-         i+=1
          try:
-            img=misc.imread(fPath)
+            img=misc.imread(argv[i+1])
          except FileNotFoundError:
-            print("File not found: "+fPath+". Is the path properly specified?")
+            print("File not found: "+argv[i+1]+". Is the path properly specified?")
             sys.exit(2)
-         flags+=[['-f',img]] 
+         flags['f']=img 
       elif argv[i] == '--jpg':
-         useJpg=True
+         flags['jpg']=True
+      elif argv[i] in ('-o', '--output'):
+         flags['o']=argv[i+1]
       elif argv[i] in ('-h', '--help'):
          exitGracefully()   
       elif argv[i] in ('-d', '--debug'):
-         debug=True
+         flags['d']=True
       
    #Use the cmd and flag lists built above to assemble a command string
    cmdStr=''
@@ -93,7 +90,7 @@ if __name__=="__main__":
    
    #This is IN NO WAY SAFE. It should not matter, as
    #this is a personal use program not running as root
-   if debug:
+   if 'd' in flags:
       print("Debug: command parsed as:")
       print(cmdStr)
    try:
@@ -110,10 +107,13 @@ if __name__=="__main__":
    
    try: 
       ext='.png'
-      if(useJpg):
+      if 'jpg' in flags:
          ext='.jpg'
       if not(retImg is None):
-         misc.imsave("outputImg"+ext, retImg);
+         fName='outputImg'
+         if 'o' in flags:
+            fName=flags['o']
+         misc.imsave(fName+ext, retImg);
    except:
       print("""
       An error occured while trying to save the image.
@@ -125,7 +125,4 @@ if __name__=="__main__":
       you want to fix it, feel free to submit a patch.
       """)
       sys.exit(2)
-
-
-
 

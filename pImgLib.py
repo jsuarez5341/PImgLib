@@ -75,9 +75,9 @@ def usage():
       Solid white
    gray: width, height
       Solid gray
-   solid: width height r g b
-      Solid of any rgb color. "r", "g", and "b" must
-      be between 0 and 255, inclusive.
+   solid: width height color
+      Solid of any rgb color. See below
+      for a list of valid colors.
    grayNoise: width height
       Random grayscale noise
    rgbNoise: width height
@@ -164,7 +164,7 @@ def crop(img, x1, y1, x2, y2):
 
 def cropRel(img, x1, y1, x2, y2):
    try:
-      img=img[y1:-y2, x1:-x2, :]
+      img=img[y1:-y2-1, x1:-x2-1, :]
    except:
       print('Error: check your relative crop offsets.')
       sys.exit(2)
@@ -234,11 +234,10 @@ def rgbShift(img, r, g, b):
       sys.exit(2)
    rgb=np.asarray([r,g,b])
    rgb=rgb[np.newaxis, np.newaxis, :]
-   aboveTop=img>(255-rgb)
-   belowTop=img<=-rgb
-   img+=aboveTop*belowTop*rgb
-   img[aboveTop]=255
-   img[belowTop]=0
+   img=img.astype(np.float)
+   img+=rgb
+   img[img>255]=255
+   img[img<0]=0
    return img
 
 def fade(img, direction, color, fMin=0, fMax=256, add=True):

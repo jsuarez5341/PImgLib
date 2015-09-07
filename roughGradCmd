@@ -1,1 +1,0 @@
-python pImg.py  -c rgbNoise 1920 1080 -c brightness -80 -c rgbScale 0.5 1.2 2.0 -c rgbShift -10 20 30 -c fade b k 0 1 False -c fade l r 0 100  -c fade r g 0 80 -c contrast 1.5 -c brightness -30 -c rgbScale 1 1 1.8

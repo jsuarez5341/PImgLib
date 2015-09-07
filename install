@@ -1,0 +1,6 @@
+echo "python $(pwd)/pImg.py \$@" > pImg
+chmod +x pImg
+echo "Need sudo password to make a symlink to /usr/local/bin"
+sudo rm /usr/local/bin/pImg
+sudo ln -s $(pwd)/pImg /usr/local/bin/pImg
+
