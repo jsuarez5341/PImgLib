@@ -146,7 +146,7 @@ def rot180(img):
    return np.rot90(img, 2)
 
 def rot270(img):
-   return np.rot270(img, 3)
+   return np.rot90(img, 3)
 
 def flipv(img):
    return np.flipud(img)
